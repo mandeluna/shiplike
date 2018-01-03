@@ -16,6 +16,13 @@
    <object id="1" x="0" y="13" width="22" height="19"/>
   </objectgroup>
  </tile>
+ <tile id="30">
+  <objectgroup draworder="index">
+   <object id="1" type="Ellipse" x="4.69022" y="5.47193" width="21.6644" height="18.0909">
+    <ellipse/>
+   </object>
+  </objectgroup>
+ </tile>
  <tile id="32">
   <objectgroup draworder="index">
    <object id="1" x="13" y="0" width="19" height="32"/>

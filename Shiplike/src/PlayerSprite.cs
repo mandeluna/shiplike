@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.ObjectModel;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using TiledSharp;
@@ -14,11 +13,18 @@ namespace Shiplike
         private int y;
         private double world_x;
         private double world_y;
+        private AnimationSpec animationSpec;
+        private int currentFrame;
+        private double lastFrameRendered = 0;
 
-        public PlayerSprite(Texture2D texture, TmxMap map)
+        public string CurrentAnimation { get; set; }
+
+        public PlayerSprite(Texture2D texture, TmxMap map, AnimationSpec animationSpec)
         {
             this.texture = texture;
             this.map = map;
+            this.animationSpec = animationSpec;
+            this.currentFrame = 0;
 
             TmxObject spawnObject = map.ObjectGroups["Player Layer"].Objects[0];
             this.x = (int)spawnObject.X;
@@ -29,7 +35,27 @@ namespace Shiplike
 
         public void DrawOn(SpriteBatch spriteBatch)
         {
-            spriteBatch.Draw(texture, new Rectangle(x, y, texture.Width, texture.Height), Color.White);
+            Rectangle sourceRectangle, destinationRectangle;
+
+            if (CurrentAnimation == null) {
+                destinationRectangle = new Rectangle(x, y, texture.Width, texture.Height);
+                spriteBatch.Draw(texture, destinationRectangle, Color.White);
+                return;
+            }
+            int width = animationSpec.TileSize;
+            int height = animationSpec.TileSize;
+            destinationRectangle = new Rectangle(x, y, width, height);
+
+            int index = currentFrame + animationSpec.StartTile(CurrentAnimation);
+            int tilesPerRow = texture.Width / animationSpec.TileSize;
+            int row = index / tilesPerRow;
+            int column = index % tilesPerRow;
+
+            sourceRectangle = new Rectangle(width * column, height * row, width, height);
+
+            var origin = new Vector2(animationSpec.TileSize / 2.0f, 0.0f);
+            spriteBatch.Draw(texture, destinationRectangle, sourceRectangle, Color.White,
+                             0.0f, origin, SpriteEffects.None, 0.0f);
         }
 
         public void MoveBy(double deltaX, double deltaY) {
@@ -47,9 +73,19 @@ namespace Shiplike
             world_y += deltaY;
         }
 
-        public void Update() {
+        public void Update(GameTime gameTime) {
             x = (int)world_x;
             y = (int)world_y;
+
+            if (animationSpec != null) {
+                if (lastFrameRendered > animationSpec.FrameRate) {
+                    currentFrame = (currentFrame + 1) % animationSpec.FrameCount(CurrentAnimation);
+                    lastFrameRendered = 0;
+                }
+                else {
+                    lastFrameRendered += gameTime.ElapsedGameTime.TotalMilliseconds;
+                }
+            }
         }
 
         private int TileIndexOf(int x_pos, int y_pos) {
@@ -98,7 +134,8 @@ namespace Shiplike
             // determine tile coordinates of new map position
             int tile_x = new_x % map.TileWidth;
             int tile_y = new_y % map.TileHeight;
-            Rectangle newRect = new Rectangle(tile_x, tile_y, texture.Width, texture.Height);
+            int width = (animationSpec == null) ? texture.Width : animationSpec.TileSize;
+            Rectangle newRect = new Rectangle(tile_x, tile_y, width, width);
 
             var collObjects = groups[0];
             foreach (var obj in collObjects.Objects)

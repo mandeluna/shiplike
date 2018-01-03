@@ -42,6 +42,7 @@
     <Compile Include="src\Game1.cs" />
     <Compile Include="src\PlayerSprite.cs" />
     <Compile Include="src\Program.cs" />
+    <Compile Include="src\AnimationSpec.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.manifest" />

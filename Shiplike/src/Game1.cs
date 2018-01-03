@@ -70,8 +70,13 @@ namespace Shiplike
             tilesetTilesWide = tileTexture.Width / tileWidth;
             tilesetTilesHigh = tileTexture.Height / tileHeight;
 
-            playerTexture = Content.Load<Texture2D>("dot");
-            player = new PlayerSprite(playerTexture, map);
+            playerTexture = Content.Load<Texture2D>("cat");
+            var animationSpec = new AnimationSpec(tileSize: 50, rate: 100);
+            // TODO the available animations should not be hard-coded
+            animationSpec.addAnimation("idle", 0, 4);
+            animationSpec.addAnimation("walk", 4, 8);
+            player = new PlayerSprite(playerTexture, map, animationSpec);
+            player.CurrentAnimation = "idle";
 
             collisionTexture = new Texture2D(GraphicsDevice, 1, 1);
             collisionTexture.SetData(data: new [] {new Color(255, 0, 0, 100)});
@@ -93,21 +98,25 @@ namespace Shiplike
 
             KeyboardState newState = Keyboard.GetState();
 
+            player.CurrentAnimation = "walk";
             if (newState.IsKeyDown(Keys.W))
             {
                 player.MoveBy(0, -100 * gameTime.ElapsedGameTime.TotalSeconds);
             }
-            if (newState.IsKeyDown(Keys.S))
+            else if (newState.IsKeyDown(Keys.S))
             {
                 player.MoveBy(0, 100 * gameTime.ElapsedGameTime.TotalSeconds);
             }
-            if (newState.IsKeyDown(Keys.D))
+            else if (newState.IsKeyDown(Keys.D))
             {
                 player.MoveBy(100 * gameTime.ElapsedGameTime.TotalSeconds, 0);
             }
-            if (newState.IsKeyDown(Keys.A))
+            else if (newState.IsKeyDown(Keys.A))
             {
                 player.MoveBy(-100 * gameTime.ElapsedGameTime.TotalSeconds, 0);
+            }
+            else {
+                player.CurrentAnimation = "idle";
             }
 
             // debugging aid
@@ -116,8 +125,7 @@ namespace Shiplike
                 showCollisionGeometry = !showCollisionGeometry;
             }
 
-
-            player.Update();
+            player.Update(gameTime);
 
 			base.Update(gameTime);
 
