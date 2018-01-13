@@ -1,27 +1,67 @@
 ﻿using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using TiledSharp;
 
 namespace Shiplike
 {
-    public class PlayerSprite
+    enum PlayerDirection { Left, Right }
+
+    public class PlayerSprite : Sprite
     {
-        private Texture2D texture;
         private TmxMap map;
         private int x;
         private int y;
         private double world_x;
         private double world_y;
+        private List<Rectangle> collisionRects = new List<Rectangle>();
         private AnimationSpec animationSpec;
         private int currentFrame;
         private double lastFrameRendered = 0;
+        private PlayerDirection direction;
+
+        /* -- DEBUG variables -- */
+        public bool ShowCollisionGeometry { get; set; }
+        Texture2D collisionTexture;
+        Texture2D backgroundTexture;
 
         public string CurrentAnimation { get; set; }
 
+        public int Width {
+            get {
+                return (animationSpec == null) ? Texture.Width : animationSpec.TileSize;
+            }
+        }
+
+        public int Height {
+            get {
+                return (animationSpec == null) ? Texture.Height : animationSpec.TileSize;
+            }
+        }
+
+        public Texture2D Texture { get; }
+        public Rectangle Bounds {
+            get {
+                if (CurrentAnimation == null)
+                {
+                    return this.Texture.Bounds;
+                }
+                int width = animationSpec.TileSize;
+                int height = animationSpec.TileSize;
+
+                int index = currentFrame + animationSpec.StartTile(CurrentAnimation);
+                int tilesPerRow = Texture.Width / animationSpec.TileSize;
+                int row = index / tilesPerRow;
+                int column = index % tilesPerRow;
+
+                return new Rectangle(width * column, height * row, width, height);
+            }
+        }
+
         public PlayerSprite(Texture2D texture, TmxMap map, AnimationSpec animationSpec)
         {
-            this.texture = texture;
+            this.Texture = texture;
             this.map = map;
             this.animationSpec = animationSpec;
             this.currentFrame = 0;
@@ -31,31 +71,38 @@ namespace Shiplike
             this.y = (int)spawnObject.Y;
             this.world_x = x;
             this.world_y = y;
+
+            collisionTexture = new Texture2D(texture.GraphicsDevice, 1, 1);
+            collisionTexture.SetData(data: new[] { new Color(0, 255, 0, 100) });
+            backgroundTexture = new Texture2D(texture.GraphicsDevice, 1, 1);
+            backgroundTexture.SetData(data: new[] { new Color(0, 0, 255, 100) });
         }
 
         public void DrawOn(SpriteBatch spriteBatch)
         {
-            Rectangle sourceRectangle, destinationRectangle;
+            var destinationRectangle = new Rectangle(x, y, this.Width, this.Height);
 
             if (CurrentAnimation == null) {
-                destinationRectangle = new Rectangle(x, y, texture.Width, texture.Height);
-                spriteBatch.Draw(texture, destinationRectangle, Color.White);
+                spriteBatch.Draw(Texture, destinationRectangle, Color.White);
                 return;
             }
-            int width = animationSpec.TileSize;
-            int height = animationSpec.TileSize;
-            destinationRectangle = new Rectangle(x, y, width, height);
 
-            int index = currentFrame + animationSpec.StartTile(CurrentAnimation);
-            int tilesPerRow = texture.Width / animationSpec.TileSize;
-            int row = index / tilesPerRow;
-            int column = index % tilesPerRow;
-
-            sourceRectangle = new Rectangle(width * column, height * row, width, height);
-
+            var transform = direction == PlayerDirection.Left ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
             var origin = new Vector2(animationSpec.TileSize / 2.0f, 0.0f);
-            spriteBatch.Draw(texture, destinationRectangle, sourceRectangle, Color.White,
-                             0.0f, origin, SpriteEffects.None, 0.0f);
+            if (ShowCollisionGeometry)
+            {
+                spriteBatch.Draw(backgroundTexture, destinationRectangle, Bounds, Color.White,
+                                 0.0f, origin, transform, 0.0f);
+            }
+
+            spriteBatch.Draw(Texture, destinationRectangle, Bounds, Color.White,
+                             0.0f, origin, transform, 0.0f);
+
+            if (ShowCollisionGeometry) {
+                foreach (var collisionRect in collisionRects) {
+                    spriteBatch.Draw(collisionTexture, collisionRect, Color.White);
+                }
+            }
         }
 
         public void MoveBy(double deltaX, double deltaY) {
@@ -68,6 +115,13 @@ namespace Shiplike
             // ensure new coordinates are valid
             if (CheckTileCollisions(new_x, new_y))
                 return;
+
+            if (deltaX < 0 && direction == PlayerDirection.Right) {
+                direction = PlayerDirection.Left;
+            }
+            else if (deltaX > 0 && direction == PlayerDirection.Left) {
+                direction = PlayerDirection.Right;
+            }
 
             world_x += deltaX;
             world_y += deltaY;
@@ -100,7 +154,6 @@ namespace Shiplike
             if (j > map.Height - 1) {
                 return -1;
             }
-
             return i + j * map.Width;
         }
 
@@ -121,9 +174,9 @@ namespace Shiplike
             var tileSetLookup = map.Tilesets[0].Tiles;
 
             // if the tile is not in the tile set, no collision is possible
-            if (!tileSetLookup.ContainsKey(tileFrame)) {
-                return false;
-            }
+            //if (!tileSetLookup.ContainsKey(tileFrame)) {
+            //    return false;
+            //}
 
             var groups = tileSetLookup[tileFrame].ObjectGroups;
             // assume that the object groups on the tile represent collision geometry
@@ -131,41 +184,86 @@ namespace Shiplike
                 return false;
             }
 
-            // determine tile coordinates of new map position
-            int tile_x = new_x % map.TileWidth;
-            int tile_y = new_y % map.TileHeight;
-            int width = (animationSpec == null) ? texture.Width : animationSpec.TileSize;
-            Rectangle newRect = new Rectangle(tile_x, tile_y, width, width);
+            // Find collision rectangle in world coordinates
+            var spriteRect = new Rectangle(new_x, new_y, this.Width, this.Height);
 
             var collObjects = groups[0];
+            if (ShowCollisionGeometry) {
+                collisionRects.Clear();
+            }
             foreach (var obj in collObjects.Objects)
             {
                 // check if collision boundary is a rectangle
                 // Tiled editor does not set type, so check attr values
                 if (obj.Width > 0 && obj.Height > 0) {
-                    // rectangle is in tile coordinates
-                    var rect = new Rectangle((int)Math.Round(obj.X),
-                                             (int)Math.Round(obj.Y),
-                                             (int)Math.Round(obj.Width),
-                                             (int)Math.Round(obj.Height));
-                    
-                    if (rect.Intersects(newRect))
-                        return true;
+                    int width = (int)Math.Round(obj.Width);
+                    int height = (int)Math.Round(obj.Height);
+                    int xoffset = (tile.HorizontalFlip) ? map.TileWidth - (int)obj.X - width : (int)obj.X;
+                    int yoffset = (tile.VerticalFlip) ? map.TileHeight - (int)obj.Y - height : (int)obj.Y;
+
+                    var rect = new Rectangle(tile.X * map.TileWidth + xoffset,
+                         tile.Y * map.TileHeight + yoffset,
+                         width,
+                         height);
+
+                    if (spriteRect.Intersects(rect))
+                    {
+                        var worldRect = Rectangle.Intersect(spriteRect, rect);
+                        if (ShowCollisionGeometry) {
+                            collisionRects.Add(worldRect);
+                        }
+                        var intersect = new Rectangle(worldRect.X - new_x,
+                                                      worldRect.Y - new_y,
+                                                      worldRect.Width,
+                                                      worldRect.Height);
+                        if (!ShowCollisionGeometry && PerPixelCollision(intersect)) {
+                            return true;
+                        }
+                    }
+                    if (ShowCollisionGeometry) {
+                        foreach (var worldRect in collisionRects) {
+                            var intersect = new Rectangle(worldRect.X - new_x,
+                                                          worldRect.Y - new_y,
+                                                          worldRect.Width,
+                                                          worldRect.Height);
+                            if (PerPixelCollision(intersect)) {
+                                return true;
+                            }
+                        }
+                    }
                 }
                 else {
-                    Console.WriteLine("Unsupported collision object {0", obj);
+                    Console.WriteLine("Unsupported collision object {0}", obj);
                 }
             }
             return false;
         }
 
-        public string TileDescription(int index) {
-            var tiles = map.Layers[0].Tiles;
-            if (index < 0) {
-                return "Off the map";
+        /*
+         * The sprite's bounding rectangle overlaps with a collision region of
+         * a tile, check the overlapping area for non-transparent pixels.
+         * If any exist, a collision has occurred.
+         */
+        private bool PerPixelCollision(Rectangle rect)
+        {
+            // Get Color data of the overlapping region
+            Color[] bitsA = new Color[Bounds.Width * Bounds.Height];
+            this.Texture.GetData(0, Bounds, bitsA, 0, bitsA.Length);
+
+            // For each single pixel in the intersecting rectangle
+            for (int y = 0; y < rect.Height; ++y)
+            {
+                for (int x = 0; x < rect.Width; ++x)
+                {
+                    // Get the color from the texture
+                    Color a = bitsA[(x + rect.X) + (y + rect.Y) * Bounds.Width];
+
+                    if (a.A != 0) // If any of the pixels in the overlapping region are not transparent (the alpha channel is not 0), then there is a collision
+                        return true;
+                }
             }
-            var tile = tiles[index];
-            return String.Format("id = {0}", tile.Gid);
+            // If no collision occurred by now, we're clear.
+            return false;
         }
     }
 }

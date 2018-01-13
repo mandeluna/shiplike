@@ -25,7 +25,7 @@
 /processorParam:TextureFormat=Color
 /build:cat.png
 
-#begin tmw_desert_spacing.png
+#begin ship-interior.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -35,5 +35,5 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:tmw_desert_spacing.png
+/build:ship-interior.png
 

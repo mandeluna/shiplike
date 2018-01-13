@@ -60,7 +60,7 @@ namespace Shiplike
 			// Create a new SpriteBatch, which can be used to draw textures.
 			spriteBatch = new SpriteBatch(GraphicsDevice);
 
-            map = new TmxMap("Content/ship.tmx");
+            map = new TmxMap("Content/ship-interior.tmx");
             tileSet = map.Tilesets[0];
             tileTexture = Content.Load<Texture2D>(tileSet.Name);
 
@@ -125,6 +125,12 @@ namespace Shiplike
                 showCollisionGeometry = !showCollisionGeometry;
             }
 
+            bool togglePlayerGeometry = newState.IsKeyDown(Keys.LeftAlt) && oldState.IsKeyUp(Keys.LeftAlt);
+            if (togglePlayerGeometry)
+            {
+                player.ShowCollisionGeometry = !player.ShowCollisionGeometry;
+            }
+
             player.Update(gameTime);
 
 			base.Update(gameTime);
@@ -147,7 +153,8 @@ namespace Shiplike
 
             for (var i = 0; i < map.Layers[0].Tiles.Count; i++)
             {
-                int gid = map.Layers[0].Tiles[i].Gid;
+                var tile = map.Layers[0].Tiles[i];
+                int gid = tile.Gid;
 
                 // Empty tile, do nothing
                 if (gid == 0)
@@ -156,7 +163,7 @@ namespace Shiplike
                 }
                 else
                 {
-                    int tileFrame = gid - 1;
+                    int tileFrame = (int)gid - 1;
                     int column = tileFrame % tilesetTilesWide;
                     int row = (int)Math.Floor((double)tileFrame / (double)tilesetTilesWide);
 
@@ -167,8 +174,19 @@ namespace Shiplike
                                                          margin + (tileHeight + spacing) * row,
                                                          tileWidth,
                                                          tileHeight);
+                    
+                    var effects = SpriteEffects.None;
+                    if (tile.HorizontalFlip)
+                    {
+                        effects = SpriteEffects.FlipHorizontally;
+                    }
+                    if (tile.VerticalFlip)
+                    {
+                        effects = SpriteEffects.FlipVertically;
+                    }
 
-                    spriteBatch.Draw(tileTexture, new Rectangle((int)x, (int)y, tileWidth, tileHeight), tilesetRec, Color.White);
+                    spriteBatch.Draw(tileTexture, new Rectangle((int)x, (int)y, tileWidth, tileHeight), tilesetRec, Color.White,
+                                     0.0f, Vector2.Zero, effects, 0.0f);
 
                     if (showCollisionGeometry) {
                         var tileSetLookup = map.Tilesets[0].Tiles;
@@ -189,12 +207,20 @@ namespace Shiplike
                             // Tiled editor does not set type, so check attr values
                             if (obj.Width > 0 && obj.Height > 0)
                             {
+                                int width = (int)Math.Round(obj.Width);
+                                int height = (int)Math.Round(obj.Height);
+                                int xoffset = (tile.HorizontalFlip) ? map.TileWidth - (int)obj.X - width : (int)obj.X;
+                                int yoffset = (tile.VerticalFlip) ? map.TileHeight - (int)obj.Y - height : (int)obj.Y;
+
+                                effects = SpriteEffects.None;
+
                                 // rectangle is in tile coordinates
-                                var rect = new Rectangle((int)Math.Round(obj.X + x),
-                                                         (int)Math.Round(obj.Y + y),
-                                                         (int)Math.Round(obj.Width),
-                                                         (int)Math.Round(obj.Height));
-                                spriteBatch.Draw(collisionTexture, rect, Color.White);
+                                var rect = new Rectangle(tile.X * map.TileWidth + xoffset,
+                                                         tile.Y * map.TileHeight + yoffset,
+                                                         width,
+                                                         height);
+                                spriteBatch.Draw(collisionTexture, rect, null, Color.White,
+                                                 0.0f, Vector2.Zero, effects, 0.0f);
                             }
                         }
                     }
@@ -207,5 +233,5 @@ namespace Shiplike
 
             base.Draw(gameTime);
 		}
-	}
+    }
 }
