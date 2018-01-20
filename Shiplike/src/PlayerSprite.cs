@@ -23,21 +23,27 @@ namespace Shiplike
 
         public string CurrentAnimation { get; set; }
 
-        public int Width {
-            get {
+        public int Width
+        {
+            get
+            {
                 return (animationSpec == null) ? Texture.Width : animationSpec.TileSize;
             }
         }
 
-        public int Height {
-            get {
+        public int Height
+        {
+            get
+            {
                 return (animationSpec == null) ? Texture.Height : animationSpec.TileSize;
             }
         }
 
         public Texture2D Texture { get; }
-        public Rectangle Bounds {
-            get {
+        public Rectangle Bounds
+        {
+            get
+            {
                 if (CurrentAnimation == null)
                 {
                     return this.Texture.Bounds;
@@ -57,11 +63,12 @@ namespace Shiplike
         /* -- static geometry for collision detection -- */
         private List<Shape>[] staticShapes;
 
-        /* -- DEBUG variables -- */
+#if DEBUG
         private List<Rectangle> collisionRects = new List<Rectangle>();
         public bool ShowCollisionGeometry { get; set; }
         Texture2D collisionTexture;
         Texture2D backgroundTexture;
+#endif
 
         public PlayerSprite(Texture2D texture, TmxMap map, AnimationSpec animationSpec)
         {
@@ -77,18 +84,21 @@ namespace Shiplike
             this.world_y = y;
 
             initializeStaticShapes();
-
+#if DEBUG
             collisionTexture = new Texture2D(texture.GraphicsDevice, 1, 1);
             collisionTexture.SetData(data: new[] { new Color(0, 255, 0, 100) });
             backgroundTexture = new Texture2D(texture.GraphicsDevice, 1, 1);
             backgroundTexture.SetData(data: new[] { new Color(0, 0, 255, 100) });
+#endif
         }
 
-        private void initializeStaticShapes() {
+        private void initializeStaticShapes()
+        {
             var tiles = map.Layers[0].Tiles;
             staticShapes = new List<Shape>[tiles.Count];
 
-            for (var i = 0; i < tiles.Count; i++) {
+            for (var i = 0; i < tiles.Count; i++)
+            {
                 var tile = tiles[i];
                 staticShapes[i] = Shapes(tile);
             }
@@ -144,49 +154,49 @@ namespace Shiplike
         {
             var destinationRectangle = new Rectangle(x, y, this.Width, this.Height);
 
-            if (CurrentAnimation == null) {
+            if (CurrentAnimation == null)
+            {
                 spriteBatch.Draw(Texture, destinationRectangle, Color.White);
                 return;
             }
 
             var transform = direction == PlayerDirection.Left ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
             var origin = new Vector2(animationSpec.TileSize / 2.0f, 0.0f);
-            if (ShowCollisionGeometry)
-            {
-                spriteBatch.Draw(backgroundTexture, destinationRectangle, Bounds, Color.White,
-                                 0.0f, origin, transform, 0.0f);
-            }
 
             spriteBatch.Draw(Texture, destinationRectangle, Bounds, Color.White,
                              0.0f, origin, transform, 0.0f);
-
+#if DEBUG
             if (ShowCollisionGeometry) {
                 foreach (var collisionRect in collisionRects) {
                     spriteBatch.Draw(collisionTexture, collisionRect, Color.White);
                 }
             }
+#endif
         }
 
-        public void MoveBy(double deltaX, double deltaY) {
+        public void MoveBy(double deltaX, double deltaY)
+        {
             int oldIndex = TileIndexOf(x, y);
 
             int new_x = (int)(world_x + deltaX);
             int new_y = (int)(world_y + deltaY);
             int newIndex = TileIndexOf(new_x, new_y);
-
+#if DEBUG
             if (ShowCollisionGeometry)
             {
                 collisionRects.Clear();
             }
-
+#endif
             // ensure new coordinates are valid
             if (CheckTileCollisions(new_x, new_y))
                 return;
 
-            if (deltaX < 0 && direction == PlayerDirection.Right) {
+            if (deltaX < 0 && direction == PlayerDirection.Right)
+            {
                 direction = PlayerDirection.Left;
             }
-            else if (deltaX > 0 && direction == PlayerDirection.Left) {
+            else if (deltaX > 0 && direction == PlayerDirection.Left)
+            {
                 direction = PlayerDirection.Right;
             }
 
@@ -194,31 +204,39 @@ namespace Shiplike
             world_y += deltaY;
         }
 
-        public void Update(GameTime gameTime) {
+        public void Update(GameTime gameTime)
+        {
             x = (int)world_x;
             y = (int)world_y;
 
-            if (animationSpec != null) {
-                if (lastFrameRendered > animationSpec.FrameRate) {
+            if (animationSpec != null)
+            {
+                if (lastFrameRendered > animationSpec.FrameRate)
+                {
                     currentFrame = (currentFrame + 1) % animationSpec.FrameCount(CurrentAnimation);
                     lastFrameRendered = 0;
                 }
-                else {
+                else
+                {
                     lastFrameRendered += gameTime.ElapsedGameTime.TotalMilliseconds;
                 }
             }
         }
 
-        private int TileIndexOf(int x_pos, int y_pos) {
-            if (x_pos < 0 || y_pos < 0) {
+        private int TileIndexOf(int x_pos, int y_pos)
+        {
+            if (x_pos < 0 || y_pos < 0)
+            {
                 return -1;
             }
             int i = x_pos / map.TileWidth;
-            if (i > map.Width - 1) {
+            if (i > map.Width - 1)
+            {
                 return -1;
             }
             int j = y_pos / map.TileHeight;
-            if (j > map.Height - 1) {
+            if (j > map.Height - 1)
+            {
                 return -1;
             }
             return i + j * map.Width;
@@ -228,7 +246,8 @@ namespace Shiplike
          * Return true if the point (new_x, new_y) is within the boundaries
          * of one of the collision objects in the tile under that point
          */
-        public Boolean CheckTileCollisions(int new_x, int new_y) {
+        public Boolean CheckTileCollisions(int new_x, int new_y)
+        {
 
             // Find collision rectangle in world coordinates
             var spriteRect = new Rectangle(new_x - this.Width / 2, new_y, this.Width, this.Height);
@@ -238,10 +257,12 @@ namespace Shiplike
             int top = new_y / map.TileHeight;
             int bottom = (new_y + this.Height) / map.TileHeight;
 
-            for (int row = top; row <= bottom; row++) {
+            for (int row = top; row <= bottom; row++)
+            {
                 if (row < 0 || row > map.Height - 1)
                     continue;
-                for (int col = left; col <= right; col++) {
+                for (int col = left; col <= right; col++)
+                {
                     if (col < 0 || col > map.Width - 1)
                         continue;
 
@@ -249,13 +270,12 @@ namespace Shiplike
                     var intersections = staticShapes[index]
                         .FindAll(shape => spriteRect.Intersects(shape.Bounds))
                         .ConvertAll(shape => Rectangle.Intersect(spriteRect, shape.Bounds));
-
+#if DEBUG
                     if (ShowCollisionGeometry)
                     {
                         collisionRects.AddRange(intersections);
-                        //collisionRects.AddRange(staticShapes[index].ConvertAll(shape => shape.Bounds));
                     }
-
+#endif
                     foreach (var intersect in intersections)
                     {
                         intersect.Offset(-(int)new_x + this.Width / 2, -(int)new_y);

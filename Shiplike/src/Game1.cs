@@ -11,19 +11,19 @@ namespace Shiplike
     /// This is the main type for your game.
     /// </summary>
     public class Game1 : Game
-	{
-		GraphicsDeviceManager graphics;
-		SpriteBatch spriteBatch;
+    {
+        GraphicsDeviceManager graphics;
+        SpriteBatch spriteBatch;
 
         TmxMap map;
         TmxTileset tileSet;
         Texture2D tileTexture;
         Texture2D playerTexture;
 
-        /* -- DEBUG variables -- */
+#if DEBUG
         bool showCollisionGeometry;
         Texture2D collisionTexture;
-
+#endif
         int tileWidth;
         int tileHeight;
         int tilesetTilesWide;
@@ -32,33 +32,33 @@ namespace Shiplike
         PlayerSprite player;
         KeyboardState oldState;
 
-		public Game1()
-		{
-			graphics = new GraphicsDeviceManager(this);
-			Content.RootDirectory = "Content";
-		}
+        public Game1()
+        {
+            graphics = new GraphicsDeviceManager(this);
+            Content.RootDirectory = "Content";
+        }
 
-		/// <summary>
-		/// Allows the game to perform any initialization it needs to before starting to run.
-		/// This is where it can query for any required services and load any non-graphic
-		/// related content.  Calling base.Initialize will enumerate through any components
-		/// and initialize them as well.
-		/// </summary>
-		protected override void Initialize()
-		{
-			// TODO: Add your initialization logic here
+        /// <summary>
+        /// Allows the game to perform any initialization it needs to before starting to run.
+        /// This is where it can query for any required services and load any non-graphic
+        /// related content.  Calling base.Initialize will enumerate through any components
+        /// and initialize them as well.
+        /// </summary>
+        protected override void Initialize()
+        {
+            // TODO: Add your initialization logic here
 
-			base.Initialize();
-		}
+            base.Initialize();
+        }
 
-		/// <summary>
-		/// LoadContent will be called once per game and is the place to load
-		/// all of your content.
-		/// </summary>
-		protected override void LoadContent()
-		{
-			// Create a new SpriteBatch, which can be used to draw textures.
-			spriteBatch = new SpriteBatch(GraphicsDevice);
+        /// <summary>
+        /// LoadContent will be called once per game and is the place to load
+        /// all of your content.
+        /// </summary>
+        protected override void LoadContent()
+        {
+            // Create a new SpriteBatch, which can be used to draw textures.
+            spriteBatch = new SpriteBatch(GraphicsDevice);
 
             map = new TmxMap("Content/ship-interior.tmx");
             tileSet = map.Tilesets[0];
@@ -77,9 +77,10 @@ namespace Shiplike
             animationSpec.addAnimation("walk", 4, 8);
             player = new PlayerSprite(playerTexture, map, animationSpec);
             player.CurrentAnimation = "idle";
-
+#if DEBUG
             collisionTexture = new Texture2D(GraphicsDevice, 1, 1);
             collisionTexture.SetData(data: new [] {new Color(255, 0, 0, 100)});
+#endif
 		}
 
 		/// <summary>
@@ -119,7 +120,7 @@ namespace Shiplike
                 player.CurrentAnimation = "idle";
             }
 
-            // debugging aid
+#if DEBUG
             bool toggleGeometry = newState.IsKeyDown(Keys.LeftShift) && oldState.IsKeyUp(Keys.LeftShift);
             if (toggleGeometry) {
                 showCollisionGeometry = !showCollisionGeometry;
@@ -130,7 +131,7 @@ namespace Shiplike
             {
                 player.ShowCollisionGeometry = !player.ShowCollisionGeometry;
             }
-
+#endif
             player.Update(gameTime);
 
 			base.Update(gameTime);
@@ -174,7 +175,7 @@ namespace Shiplike
                                                          margin + (tileHeight + spacing) * row,
                                                          tileWidth,
                                                          tileHeight);
-                    
+
                     var effects = SpriteEffects.None;
                     if (tile.HorizontalFlip)
                     {
@@ -187,8 +188,9 @@ namespace Shiplike
 
                     spriteBatch.Draw(tileTexture, new Rectangle((int)x, (int)y, tileWidth, tileHeight), tilesetRec, Color.White,
                                      0.0f, Vector2.Zero, effects, 0.0f);
-
-                    if (showCollisionGeometry) {
+#if DEBUG
+                    if (showCollisionGeometry)
+                    {
                         var tileSetLookup = map.Tilesets[0].Tiles;
 
                         // if the tile is not in the tile set, no collision is possible
@@ -224,6 +226,7 @@ namespace Shiplike
                             }
                         }
                     }
+#endif
                 }
             }
 
