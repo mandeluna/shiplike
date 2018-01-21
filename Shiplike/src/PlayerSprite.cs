@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using TiledSharp;
@@ -11,12 +12,12 @@ namespace Shiplike
     public class PlayerSprite : Sprite
     {
         private TmxMap map;
-        private int x;
-        private int y;
-        private double world_x;
-        private double world_y;
 
-        private AnimationSpec animationSpec;
+        public Vector2 Position { get; set; }
+        public Vector2 Velocity { get; set; }
+        public Vector2 Acceleration { get; set; }
+
+        private Animation animation;
         private int currentFrame;
         private double lastFrameRendered = 0;
         private PlayerDirection direction;
@@ -27,7 +28,7 @@ namespace Shiplike
         {
             get
             {
-                return (animationSpec == null) ? Texture.Width : animationSpec.TileSize;
+                return (animation == null) ? Texture.Width : animation.Width;
             }
         }
 
@@ -35,7 +36,7 @@ namespace Shiplike
         {
             get
             {
-                return (animationSpec == null) ? Texture.Height : animationSpec.TileSize;
+                return (animation == null) ? Texture.Height : animation.Height;
             }
         }
 
@@ -48,17 +49,24 @@ namespace Shiplike
                 {
                     return this.Texture.Bounds;
                 }
-                int width = animationSpec.TileSize;
-                int height = animationSpec.TileSize;
+                int width = animation.Width;
+                int height = animation.Height;
 
-                int index = currentFrame + animationSpec.StartTile(CurrentAnimation);
-                int tilesPerRow = Texture.Width / animationSpec.TileSize;
+                int index = currentFrame + animation.StartTile(CurrentAnimation);
+                int tilesPerRow = Texture.Width / animation.Width;
                 int row = index / tilesPerRow;
                 int column = index % tilesPerRow;
 
                 return new Rectangle(width * column, height * row, width, height);
             }
         }
+
+        public bool IsOnGround { get; set; }
+        public bool CanClimbUp { get; set; }
+        public bool CanClimbDown { get; set; }
+
+        // damping of collision impact
+        private static float ELASTICITY = 0.25f;
 
         /* -- static geometry for collision detection -- */
         private List<Shape>[] staticShapes;
@@ -70,18 +78,17 @@ namespace Shiplike
         Texture2D backgroundTexture;
 #endif
 
-        public PlayerSprite(Texture2D texture, TmxMap map, AnimationSpec animationSpec)
+        public PlayerSprite(Texture2D texture, TmxMap map, Animation animationSpec)
         {
             this.Texture = texture;
             this.map = map;
-            this.animationSpec = animationSpec;
+            this.animation = animationSpec;
             this.currentFrame = 0;
 
-            TmxObject spawnObject = map.ObjectGroups["Player Layer"].Objects[0];
-            this.x = (int)spawnObject.X;
-            this.y = (int)spawnObject.Y;
-            this.world_x = x;
-            this.world_y = y;
+            TmxObject spawnObject = map.ObjectGroups["Player"].Objects[0];
+            Position = new Vector2((float)spawnObject.X, (float)spawnObject.Y);
+            Velocity = Vector2.Zero;
+            Acceleration = new Vector2(0.0f, 300.0f);
 
             initializeStaticShapes();
 #if DEBUG
@@ -152,7 +159,7 @@ namespace Shiplike
 
         public void DrawOn(SpriteBatch spriteBatch)
         {
-            var destinationRectangle = new Rectangle(x, y, this.Width, this.Height);
+            var destinationRectangle = new Rectangle((int)Position.X, (int)Position.Y, this.Width, this.Height);
 
             if (CurrentAnimation == null)
             {
@@ -161,7 +168,7 @@ namespace Shiplike
             }
 
             var transform = direction == PlayerDirection.Left ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
-            var origin = new Vector2(animationSpec.TileSize / 2.0f, 0.0f);
+            var origin = new Vector2(animation.Width / 2.0f, 0.0f);
 
             spriteBatch.Draw(Texture, destinationRectangle, Bounds, Color.White,
                              0.0f, origin, transform, 0.0f);
@@ -174,23 +181,33 @@ namespace Shiplike
 #endif
         }
 
-        public void MoveBy(double deltaX, double deltaY)
+        public void Update(GameTime gameTime)
         {
-            int oldIndex = TileIndexOf(x, y);
+            float seconds = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-            int new_x = (int)(world_x + deltaX);
-            int new_y = (int)(world_y + deltaY);
-            int newIndex = TileIndexOf(new_x, new_y);
-#if DEBUG
-            if (ShowCollisionGeometry)
+            if (animation != null)
             {
+                if (lastFrameRendered > animation.FrameRate)
+                {
+                    currentFrame = (currentFrame + 1) % animation.FrameCount(CurrentAnimation);
+                    lastFrameRendered = 0;
+                }
+                else
+                {
+                    lastFrameRendered += gameTime.ElapsedGameTime.TotalMilliseconds;
+                }
+            }
+
+            float deltaX = Velocity.X * seconds;
+            float deltaY = Velocity.Y * seconds;
+
+            int new_x = (int)(Position.X + deltaX);
+            int new_y = (int)(Position.Y + deltaY);
+#if DEBUG
+            if (ShowCollisionGeometry) {
                 collisionRects.Clear();
             }
 #endif
-            // ensure new coordinates are valid
-            if (CheckTileCollisions(new_x, new_y))
-                return;
-
             if (deltaX < 0 && direction == PlayerDirection.Right)
             {
                 direction = PlayerDirection.Left;
@@ -200,27 +217,27 @@ namespace Shiplike
                 direction = PlayerDirection.Right;
             }
 
-            world_x += deltaX;
-            world_y += deltaY;
-        }
-
-        public void Update(GameTime gameTime)
-        {
-            x = (int)world_x;
-            y = (int)world_y;
-
-            if (animationSpec != null)
-            {
-                if (lastFrameRendered > animationSpec.FrameRate)
-                {
-                    currentFrame = (currentFrame + 1) % animationSpec.FrameCount(CurrentAnimation);
-                    lastFrameRendered = 0;
+            // ensure new coordinates are valid
+            Vector2 impact = CheckTileCollisions(new_x, new_y);
+            if (impact != Vector2.Zero) {
+                impact.Normalize();
+                Velocity = -impact * ELASTICITY * Velocity;
+                if (!IsOnGround) {
+                    return;
                 }
-                else
-                {
-                    lastFrameRendered += gameTime.ElapsedGameTime.TotalMilliseconds;
-                }
+                deltaX = Velocity.X * seconds;
+                deltaY = Velocity.Y * seconds;
             }
+
+            // don't allow player to sink below the ground
+            if (deltaY > 0 && IsOnGround) {
+                deltaY = 0;
+            }
+            Position += new Vector2(deltaX, deltaY);
+
+            // don't apply gravitational acceleration if player is on the ground
+            float dy = IsOnGround ? 0 : Acceleration.Y * seconds;
+            Velocity += new Vector2(Acceleration.X * seconds, dy);
         }
 
         private int TileIndexOf(int x_pos, int y_pos)
@@ -243,12 +260,19 @@ namespace Shiplike
         }
 
         /*
-         * Return true if the point (new_x, new_y) is within the boundaries
-         * of one of the collision objects in the tile under that point
+         * Return an impact vector if the point (new_x, new_y) is within the boundaries
+         * of one of the collision objects in the tile under that point, and it contains
+         * at least one non-transparent pixel of the sprite.
+         * 
+         * If a collision has occurred, return a Vector indicating the impact
+         * location (in the opposite direction of the position vector at the point
+         * of impact).
+         * 
+         * Return a Zero vector if no collision has occurred (Vector2 is a value
+         * type so we cannot return null in thise case).
          */
-        public Boolean CheckTileCollisions(int new_x, int new_y)
+        public Vector2 CheckTileCollisions(int new_x, int new_y)
         {
-
             // Find collision rectangle in world coordinates
             var spriteRect = new Rectangle(new_x - this.Width / 2, new_y, this.Width, this.Height);
 
@@ -256,6 +280,12 @@ namespace Shiplike
             int right = (new_x + this.Width / 2) / map.TileWidth;
             int top = new_y / map.TileHeight;
             int bottom = (new_y + this.Height) / map.TileHeight;
+
+            Point foot = new Point((int)Position.X, (int)Position.Y + this.Height);
+
+            IsOnGround = false;
+            CanClimbUp = false;
+            CanClimbDown = false;
 
             for (int row = top; row <= bottom; row++)
             {
@@ -270,6 +300,9 @@ namespace Shiplike
                     var intersections = staticShapes[index]
                         .FindAll(shape => spriteRect.Intersects(shape.Bounds))
                         .ConvertAll(shape => Rectangle.Intersect(spriteRect, shape.Bounds));
+
+                    IsOnGround |= staticShapes[index]
+                        .Find(shape => shape.Bounds.Contains(foot)) != null;
 #if DEBUG
                     if (ShowCollisionGeometry)
                     {
@@ -279,23 +312,25 @@ namespace Shiplike
                     foreach (var intersect in intersections)
                     {
                         intersect.Offset(-(int)new_x + this.Width / 2, -(int)new_y);
-                        if (PerPixelCollision(intersect))
+                        Vector2 collision = PerPixelCollision(intersect);
+                        if (collision != Vector2.Zero)
                         {
-                            return true;
+                            // since we aren't going to accept the new position at new_x, new_y
+                            // find the impact vector which is in the opposite direction of that
+                            return new Vector2(collision.X, collision.Y - this.Height / 2);
                         }
                     }
                 }
             }
 
-            return false;
+            return Vector2.Zero;
         }
 
         /*
          * The sprite's bounding rectangle overlaps with a collision region of
          * a tile, check the overlapping area for non-transparent pixels.
-         * If any exist, a collision has occurred.
          */
-        private bool PerPixelCollision(Rectangle rect)
+        private Vector2 PerPixelCollision(Rectangle rect)
         {
             // Get Color data of the overlapping region
             Color[] bitsA = new Color[Bounds.Width * Bounds.Height];
@@ -309,12 +344,14 @@ namespace Shiplike
                     // Get the color from the texture
                     Color a = bitsA[x + y * Bounds.Width];
 
-                    if (a.A != 0) // If any of the pixels in the overlapping region are not transparent (the alpha channel is not 0), then there is a collision
-                        return true;
+                    // If any of the pixels in the overlapping region are not transparent
+                    // (the alpha channel is not 0), then there is a collision
+                    if (a.A != 0)
+                        return new Vector2(x, y);
                 }
             }
             // If no collision occurred by now, we're clear.
-            return false;
+            return Vector2.Zero;
         }
     }
 }

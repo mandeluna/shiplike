@@ -42,7 +42,7 @@
     <Compile Include="src\Game1.cs" />
     <Compile Include="src\PlayerSprite.cs" />
     <Compile Include="src\Program.cs" />
-    <Compile Include="src\AnimationSpec.cs" />
+    <Compile Include="src\Animation.cs" />
     <Compile Include="src\Sprite.cs" />
     <Compile Include="src\Shape.cs" />
   </ItemGroup>

@@ -71,7 +71,7 @@ namespace Shiplike
             tilesetTilesHigh = tileTexture.Height / tileHeight;
 
             playerTexture = Content.Load<Texture2D>("cat");
-            var animationSpec = new AnimationSpec(tileSize: 50, rate: 100);
+            var animationSpec = new Animation(width: 20, height: 30, rate: 100);
             // TODO the available animations should not be hard-coded
             animationSpec.addAnimation("idle", 0, 4);
             animationSpec.addAnimation("walk", 4, 8);
@@ -98,26 +98,37 @@ namespace Shiplike
 #endif
 
             KeyboardState newState = Keyboard.GetState();
+            // allow movement in case player is stuck in space
+            Boolean canMoveHorizontally = player.IsOnGround || player.Velocity.Length() < 1.0f;
 
             player.CurrentAnimation = "walk";
-            if (newState.IsKeyDown(Keys.W))
+            if (newState.IsKeyDown(Keys.W) && player.CanClimbUp)
             {
-                player.MoveBy(0, -100 * gameTime.ElapsedGameTime.TotalSeconds);
+                player.Velocity = new Vector2(0, -100);
             }
-            else if (newState.IsKeyDown(Keys.S))
+            else if (newState.IsKeyDown(Keys.S) && player.CanClimbDown)
             {
-                player.MoveBy(0, 100 * gameTime.ElapsedGameTime.TotalSeconds);
+                player.Velocity = new Vector2(0, 100);
             }
-            else if (newState.IsKeyDown(Keys.D))
+            else if (newState.IsKeyDown(Keys.D) && canMoveHorizontally)
             {
-                player.MoveBy(100 * gameTime.ElapsedGameTime.TotalSeconds, 0);
+                player.Velocity = new Vector2(100, player.Velocity.Y);
             }
-            else if (newState.IsKeyDown(Keys.A))
+            else if (newState.IsKeyDown(Keys.A) && canMoveHorizontally)
             {
-                player.MoveBy(-100 * gameTime.ElapsedGameTime.TotalSeconds, 0);
+                player.Velocity = new Vector2(-100, player.Velocity.Y);
             }
-            else {
+            else
+            {
+                if (player.IsOnGround) {
+                    player.Velocity = new Vector2(0, player.Velocity.Y);
+                }
                 player.CurrentAnimation = "idle";
+            }
+            // jump
+            if (newState.IsKeyDown(Keys.Space) && oldState.IsKeyUp(Keys.Space) && canMoveHorizontally)
+            {
+                player.Velocity = new Vector2(player.Velocity.X, -100);
             }
 
 #if DEBUG
@@ -145,7 +156,7 @@ namespace Shiplike
 		/// <param name="gameTime">Provides a snapshot of timing values.</param>
 		protected override void Draw(GameTime gameTime)
 		{
-			graphics.GraphicsDevice.Clear(Color.CornflowerBlue);
+            graphics.GraphicsDevice.Clear(Color.CornflowerBlue);
 
             int margin = tileSet.Margin;
             int spacing = tileSet.Spacing;

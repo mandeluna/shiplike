@@ -8,12 +8,12 @@
  </tile>
  <tile id="1">
   <objectgroup draworder="index">
-   <object id="1" x="0" y="44" width="24" height="6"/>
+   <object id="1" x="0" y="44" width="21" height="6"/>
   </objectgroup>
  </tile>
  <tile id="2">
   <objectgroup draworder="index">
-   <object id="1" x="24" y="44" width="26" height="6"/>
+   <object id="1" x="26" y="44" width="24" height="6"/>
   </objectgroup>
  </tile>
  <tile id="3">

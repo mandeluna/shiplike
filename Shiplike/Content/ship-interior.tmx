@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.0" tiledversion="1.0.3" orientation="orthogonal" renderorder="right-down" width="16" height="8" tilewidth="50" tileheight="50" infinite="0" nextobjectid="3">
+<map version="1.0" tiledversion="1.0.3" orientation="orthogonal" renderorder="right-down" width="16" height="8" tilewidth="50" tileheight="50" infinite="0" nextobjectid="4">
  <tileset firstgid="1" source="ship-interior.tsx"/>
- <layer name="Tile Layer 1" width="16" height="8">
+ <layer name="Interior Tiles" width="16" height="8">
   <data encoding="csv">
 17,14,14,14,14,14,14,14,14,14,14,14,14,14,19,2147483665,
 9,14,14,14,14,14,14,14,14,14,14,14,14,14,11,10,
@@ -13,9 +13,12 @@
 2147483661,1,1,5,1,1,1,1,1,1,1,1,1,1,1,13
 </data>
  </layer>
- <objectgroup name="Player Layer">
-  <object id="2" x="20" y="203">
+ <objectgroup name="Player">
+  <object id="2" x="20" y="214">
    <point/>
   </object>
+ </objectgroup>
+ <objectgroup name="Movement">
+  <object id="3" name="Ladder" x="166" y="265" width="16" height="125"/>
  </objectgroup>
 </map>

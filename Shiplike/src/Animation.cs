@@ -3,17 +3,19 @@ using System.Collections.Generic;
 
 namespace Shiplike
 {
-    public class AnimationSpec
+    public class Animation
     {
         private Dictionary<string, Tuple<int, int>> animations;
 
-        public int TileSize { get; }
+        public int Width { get; }
+        public int Height { get; }
         public int FrameRate { get; set; }
 
-        public AnimationSpec(int tileSize, int rate)
+        public Animation(int width, int height, int rate)
         {
             this.animations = new Dictionary<string, Tuple<int, int>>();
-            this.TileSize = tileSize;
+            this.Width = width;
+            this.Height = height;
             this.FrameRate = rate;
         }
 
