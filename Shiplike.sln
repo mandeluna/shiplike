@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shiplike", "Shiplike\Shiplike.csproj", "{BD723FB1-3EFC-463F-A6A0-76E1A7B6281F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TiledSharp", "..\TiledSharp\TiledSharp\TiledSharp.csproj", "{E4130F8D-D301-4E0C-916D-489C4A23C9B1}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -15,9 +13,5 @@ Global
 		{BD723FB1-3EFC-463F-A6A0-76E1A7B6281F}.Debug|x86.Build.0 = Debug|x86
 		{BD723FB1-3EFC-463F-A6A0-76E1A7B6281F}.Release|x86.ActiveCfg = Release|x86
 		{BD723FB1-3EFC-463F-A6A0-76E1A7B6281F}.Release|x86.Build.0 = Release|x86
-		{E4130F8D-D301-4E0C-916D-489C4A23C9B1}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{E4130F8D-D301-4E0C-916D-489C4A23C9B1}.Debug|x86.Build.0 = Debug|Any CPU
-		{E4130F8D-D301-4E0C-916D-489C4A23C9B1}.Release|x86.ActiveCfg = Release|Any CPU
-		{E4130F8D-D301-4E0C-916D-489C4A23C9B1}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using TiledSharp;
@@ -118,17 +117,13 @@ namespace Shiplike
             var tileFrame = tile.Gid - 1;
             var tileSetLookup = map.Tilesets[0].Tiles;
 
-            if (!tileSetLookup.ContainsKey(tileFrame))
-            {
+            if (tileFrame > tileSetLookup.Count - 1)
                 return shapes;
-            }
 
             var groups = tileSetLookup[tileFrame].ObjectGroups;
             // assume that the object groups on the tile represent collision geometry
             if (groups.Count == 0)
-            {
                 return shapes;
-            }
 
             var collObjects = groups[0];
             foreach (var obj in collObjects.Objects)
@@ -208,15 +203,6 @@ namespace Shiplike
                 collisionRects.Clear();
             }
 #endif
-            if (deltaX < 0 && direction == PlayerDirection.Right)
-            {
-                direction = PlayerDirection.Left;
-            }
-            else if (deltaX > 0 && direction == PlayerDirection.Left)
-            {
-                direction = PlayerDirection.Right;
-            }
-
             // ensure new coordinates are valid
             Vector2 impact = CheckTileCollisions(new_x, new_y);
             if (impact != Vector2.Zero) {
@@ -227,6 +213,15 @@ namespace Shiplike
                 }
                 deltaX = Velocity.X * seconds;
                 deltaY = Velocity.Y * seconds;
+            }
+            // only change directions if there is no collision
+            else if (deltaX < 0 && direction == PlayerDirection.Right)
+            {
+                direction = PlayerDirection.Left;
+            }
+            else if (deltaX > 0 && direction == PlayerDirection.Left)
+            {
+                direction = PlayerDirection.Right;
             }
 
             // don't allow player to sink below the ground

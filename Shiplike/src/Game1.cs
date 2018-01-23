@@ -205,8 +205,9 @@ namespace Shiplike
                         var tileSetLookup = map.Tilesets[0].Tiles;
 
                         // if the tile is not in the tile set, no collision is possible
-                        if (!tileSetLookup.ContainsKey(tileFrame))
+                        if (tileFrame > tileSetLookup.Count - 1)
                             continue;
+
 
                         var groups = tileSetLookup[tileFrame].ObjectGroups;
                         // assume that the object groups on the tile represent collision geometry
