@@ -1,5 +1,5 @@
 ﻿using System;
-
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -19,6 +19,9 @@ namespace Shiplike
         TmxTileset tileSet;
         Texture2D tileTexture;
         Texture2D playerTexture;
+
+        // TODO we need an indexed lookup for ladders if there are many of them
+        List<Rectangle> ladders;
 
 #if DEBUG
         bool showCollisionGeometry;
@@ -75,13 +78,32 @@ namespace Shiplike
             // TODO the available animations should not be hard-coded
             animationSpec.addAnimation("idle", 0, 4);
             animationSpec.addAnimation("walk", 4, 8);
-            player = new PlayerSprite(playerTexture, map, animationSpec);
-            player.CurrentAnimation = "idle";
+            player = new PlayerSprite(playerTexture, map, animationSpec)
+            {
+                CurrentAnimation = "idle"
+            };
+            initializeMovementGraph(map.ObjectGroups["Movement"]);
 #if DEBUG
             collisionTexture = new Texture2D(GraphicsDevice, 1, 1);
             collisionTexture.SetData(data: new [] {new Color(255, 0, 0, 100)});
 #endif
 		}
+
+        /*
+         * Initialize the navigation paths and invisible graph structures
+         * used to support player and AI navigation through the map
+         */
+        void initializeMovementGraph(TmxObjectGroup objects) {
+            ladders = new List<Rectangle>();
+            foreach (TmxObject shape in objects.Objects) {
+                if (shape.Name == "Ladder") {
+                    ladders.Add(new Rectangle((int)shape.X,
+                                              (int)shape.Y,
+                                              (int)shape.Width,
+                                              (int)shape.Height));
+                }
+            }
+        }
 
 		/// <summary>
 		/// Allows the game to run logic such as updating the world,
@@ -96,32 +118,42 @@ namespace Shiplike
 			if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
 				Exit();
 #endif
-
             KeyboardState newState = Keyboard.GetState();
+            player.CanClimb = ladders.Exists(rect => rect.Contains(player.Centroid));
             // allow movement in case player is stuck in space
-            Boolean canMoveHorizontally = player.IsOnGround || player.Velocity.Length() < 1.0f;
+            Boolean canMoveHorizontally = player.IsOnGround || player.CanClimb || player.Velocity.Length() < 1.0f;
 
             player.CurrentAnimation = "walk";
-            if (newState.IsKeyDown(Keys.W) && player.CanClimbUp)
+            if (newState.IsKeyDown(Keys.W) && player.CanClimb)
             {
                 player.Velocity = new Vector2(0, -100);
             }
-            else if (newState.IsKeyDown(Keys.S) && player.CanClimbDown)
+            else if (newState.IsKeyDown(Keys.S) && player.CanClimb && !player.IsOnGround)
             {
                 player.Velocity = new Vector2(0, 100);
             }
-            else if (newState.IsKeyDown(Keys.D) && canMoveHorizontally)
+            else if (newState.IsKeyDown(Keys.D))
             {
-                player.Velocity = new Vector2(100, player.Velocity.Y);
+                if (canMoveHorizontally) {
+                    player.Velocity = new Vector2(100, player.Velocity.Y);
+                }
+                player.Direction = PlayerDirection.Right;
             }
-            else if (newState.IsKeyDown(Keys.A) && canMoveHorizontally)
+            else if (newState.IsKeyDown(Keys.A))
             {
-                player.Velocity = new Vector2(-100, player.Velocity.Y);
+                if (canMoveHorizontally) {
+                    player.Velocity = new Vector2(-100, player.Velocity.Y);
+                }
+                player.Direction = PlayerDirection.Left;
             }
             else
             {
-                if (player.IsOnGround) {
+                if (player.IsOnGround)
+                {
                     player.Velocity = new Vector2(0, player.Velocity.Y);
+                }
+                else if (!player.IsOnGround && player.CanClimb) {
+                    player.Velocity = Vector2.Zero;
                 }
                 player.CurrentAnimation = "idle";
             }
